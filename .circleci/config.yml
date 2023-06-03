@@ -33,6 +33,7 @@ jobs:
           path: infrastructure/
       - terraform/plan:
           path: infrastructure/
+          var: env=$env
     working_directory: ~/src
 
   apply:
@@ -41,6 +42,7 @@ jobs:
       - checkout
       - terraform/apply:
           path: infrastructure/
+          var: env=$env
     working_directory: ~/src
 
   run-tests:
@@ -62,15 +64,28 @@ jobs:
       - checkout
       - terraform/destroy:
           path: infrastructure/
+          var: env=$env
     working_directory: ~/src
 
 workflows:
   deploy:
     jobs:
-      - tfsec
+      - tfsec:
+          context: "<< pipeline.git.branch >>"
+          filters:
+            branches:
+              only: 
+                - test
+                - prod
       - aws-cli-cred-setup:
           context: aws
       - init-validate-plan:
+          context: "<< pipeline.git.branch >>"
+          filters:
+            branches:
+              only: 
+                - test
+                - prod
           requires:
             - aws-cli-cred-setup
             - tfsec
@@ -79,6 +94,12 @@ workflows:
           requires:
             - init-validate-plan
       - apply:
+          context: "<< pipeline.git.branch >>"
+          filters:
+            branches:
+              only: 
+                - test
+                - prod
           requires:
             - hold-before-apply
       - run-tests:
@@ -89,5 +110,11 @@ workflows:
           requires:
             - apply
       - destroy:
+          context: "<< pipeline.git.branch >>"
+          filters:
+            branches:
+              only: 
+                - test
+                - prod
           requires:
             - hold-before-destroy
